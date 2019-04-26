@@ -1,0 +1,30 @@
+Chemical Engineering	$63,200	$107,000
+Computer Engineering	$61,400	$105,000
+Electrical Engineering	$60,900	$103,000
+Aerospace Engineering	$57,700	$101,000
+Economics	$50,100	$98,600
+Computer Science	$55,900	$95,500
+Industrial Engineering	$57,700	$94,700
+Mechanical Engineering	$57,900	$93,600
+Math	$45,400	$92,400
+Physician Assistant	$74,300	$91,700
+Civil Engineering	$53,900	$90,500
+Construction	$53,700	$88,900
+Philosophy	$39,900	$81,200
+Marketing	$40,800	$79,600
+Architecture	$41,600	$76,800
+Information Technology (IT)	$49,100	$74,800
+Business Management	$43,000	$72,100
+Agriculture	$42,600	$71,900
+Communications	$38,100	$70,000
+Nursing	$54,200	$67,000
+Art History	$35,800	$64,900
+Biology	$38,800	$64,800
+English	$38,000	$64,700
+Psychology	$35,900	$60,400
+Drama	$35,900	$56,900
+Criminal Justice	$35,000	$56,300
+Nutrition	$39,900	$55,300
+Music	$35,900	$55,000
+Education	$34,900	$52,000
+Religion	$34,100	$52,000
