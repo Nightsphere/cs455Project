@@ -1,45 +1,76 @@
 package cs455.spark;
 
 
+import org.apache.spark.SparkConf;
+import org.apache.spark.SparkContext;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.functions.col;
+import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import scala.Predef;
+import scala.Tuple2;
+import scala.collection.JavaConverters;
+import scala.collection.Seq;
+
+import java.util.ArrayList;
+import java.util.TreeMap;
+
+import static org.apache.spark.sql.functions.col;
 
 public class Driver {
 
-    public Seq<Column> convertListToSeq(ArrayList<Column> list) {
+    private static long totalEarnings = 0;
+    private static int numberColleges = 0;
+    private static long avgEarnings = 0;
+    private static String state = "";
+    private static String dependant = "";
+    private static int degree = 0;
+    private static double majorEarnings = 0;
+    private static int majorCount = 0;
+    private static double avgMajorEarnings = 0;
+    private static TreeMap<Double, String> topScores = new TreeMap<>();
+
+    private static Seq<Column> convertListToSeq(ArrayList<Column> list) {
         return JavaConverters.asScalaIteratorConverter(list.iterator()).asScala().toSeq();
     }
 
-	public static void main(String[] args) throws Exception {
-        // Arguements: file locations, State, (In)Dependent, Degree index
+	public static void main(String[] args) {
+        // Arguments: file locations, State, (In)Dependent, Degree index
         JavaSparkContext sc = new JavaSparkContext(new SparkConf().setAppName("College Scorecard"));
-        SparkContext context = new SparkContext(conf);
+        SparkContext context = new SparkContext(sc.getConf());
         SparkSession sparkSession = new SparkSession(context);
-        String state = args[1];
-        String dep = args[2];
-        int degree = Integer.parseInt(args[3]);
-        DataSet<Row> db = sparkSession.read().csv(args[0]);
+        state = args[2];
+        dependant = args[3];
+        degree = Integer.parseInt(args[4]);
+        Dataset<Row> db = sparkSession.read().csv(args[0]);
         JavaRDD<Row> earnings = db.select(col("INSTNM"),col("md_earn_wne_p10")).javaRDD();
-        long totalEarnings = 0;
-        int numberColleges = 0;
-        JavaPairRDD<String, Integer> studentEarnings = earning.mapToPairRDD<String,Integer>((row)->{
-            String[] rows = row.split(",");
+        earnings.foreach(row -> {
+            totalEarnings += row.getInt(1);
             numberColleges++;
-            int value = Integer.parseInt(rows[1]);
-            totalEarnings += value;
-            return new Tuple2<String,Integer>(rows[0],value);
-        }, this);
-        long avgEarnings = totalEarnings/numberColleges;
-        JavaPairRDD<String, Double> collegeScore = studentEarnings.mapToPairRDD((key,value)->{
-            double score = totalEarnings/value;
-            return new Tuple2<String,Integer>(key,score);
         });
-        ArrayList<Column> cols = new ArrayList<Column>();
+        avgEarnings = totalEarnings/numberColleges;
+        JavaPairRDD<String, Double> collegeScore = earnings.mapToPair((row) -> {
+            double score = avgEarnings/row.getInt(1);
+            return new Tuple2<>(row.getString(0),score);
+        });
+
+        Dataset<Row> db2 = sparkSession.read().csv(args[1]);
+        db2.createOrReplaceTempView("majors");
+        JavaRDD<Row> majors = db2.filter("SELECT * FROM majors WHERE Type =" + degree).javaRDD();
+
+        majors.foreach(row -> {
+            majorEarnings += row.getInt(1);
+            majorCount++;
+        });
+        avgMajorEarnings = majorEarnings/majorCount;
+
+        ArrayList<Column> col_majors = new ArrayList<>();
+        ArrayList<Column> cols = new ArrayList<>();
         cols.add(col("INSTNM"));
         cols.add(col("STABBR"));
-        cols.add(col("ADM_RATE"));
-        cols.add(col("COSTT4_A"));
         cols.add(col("TUITIONFEE_IN"));
         cols.add(col("TUITIONFEE_OUT"));
         cols.add(col("DEP_DEBT_MDN"));
@@ -64,12 +95,34 @@ public class Driver {
             case 17: cols.add(col("PCIP11"));
         }
         JavaRDD<Row> columns = db.select(convertListToSeq(cols)).javaRDD();
-        columns.flatMap((row) -> {
-            String[] rows = row.split(",");
-            
+        JavaPairRDD<String, Double> scores = columns.mapToPair((row) -> {
+            double debt;
+
+            if (dependant.charAt(0) == 'D' || dependant.charAt(0) == 'd')
+                debt = row.getDouble(4);
+            else
+                debt = row.getDouble(5);
+
+            if (state.equalsIgnoreCase(row.getString(1)))
+                debt -= row.getInt(3) - row.getInt(2);
+            else
+                debt += row.getInt(3) - row.getInt(2);
+
+            double years = debt / (0.05 * avgMajorEarnings);
+
+            return new Tuple2<>(row.getString(0), (1 - row.getFloat(6)) * years);
         });
-        spark.stop();
+
+        scores.foreach((college) -> {
+            topScores.put(college._2, college._1);
+            if (topScores.size() > 3)
+                topScores.remove(topScores.lastKey());
+        });
+        JavaConverters.mapAsScalaMapConverter(topScores).asScala().toMap(Predef.conforms());
+
+        sc.parallelize(new ArrayList<>(topScores.values())).coalesce(1).saveAsTextFile("/stuff");
+
+        sparkSession.stop();
         sc.stop();
     }
-	
 }
