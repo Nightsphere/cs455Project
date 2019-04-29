@@ -59,7 +59,7 @@ public class Driver {
 
         Dataset<Row> db2 = sparkSession.read().csv(args[1]);
         db2.createOrReplaceTempView("majors");
-        JavaRDD<Row> majors = db2.filter("SELECT * FROM majors WHERE Type =" + degree).javaRDD();
+        JavaRDD<Row> majors = db2.filter("SELECT * FROM majors WHERE type =" + degree).javaRDD();
 
         majors.foreach(row -> {
             majorEarnings += row.getInt(1);
