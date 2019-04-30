@@ -1,7 +1,6 @@
 package cs455.spark;
 
 
-import org.apache.avro.generic.GenericData;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -25,19 +24,24 @@ import static org.apache.spark.sql.functions.col;
 
 public class Driver {
 
+	private static String major;
     private static String state = "";
     private static String dependant = "";
     private static int degree = 0;
     private static double majorEarnings = 0;
     private static double avgMajorEarnings = 0;
     private static TreeMap<Double, String> topScores = new TreeMap<>();
-
-    private static Seq<Column> convertListToSeq(ArrayList<Column> list) {
-        return JavaConverters.asScalaIteratorConverter(list.iterator()).asScala().toSeq();
-    }
+    private static int instnm = 0;
+    private static int stabbr = 0;
+    private static int instate = 0;
+    private static int outstate = 0;
+    private static int dep = 0;
+    private static int ind = 0;
+    private static int rate = 0;
+    private static int pci = 0;
 
     public static void main(String[] args) {
-        // Arguments: file locations, State, (In)Dependent, Degree index
+        // Arguments: data, majors.csv, State, (In)Dependent, Degree index
         SparkSession sparkSession = SparkSession
                 .builder()
                 .master("local")
@@ -48,8 +52,7 @@ public class Driver {
         dependant = args[3];
         degree = Integer.parseInt(args[4]);
 
-        String schemaString = "INSTNM STABBR TUITIONFEE_IN TUITIONFEE_OUT DEP_DEBT_MDN IND_DEBT_MDN COMPL_RPY_7YR_RT ";
-
+        Dataset<Row> db = sparkSession.read().format("csv").load(args[0]);
         Dataset<Row> db2 = sparkSession.read().format("csv").option("header", "true").load(args[1]);
         db2.createOrReplaceTempView("majors");
         JavaRDD<Row> majors = db2.filter(col("type").equalTo(degree)).javaRDD();
@@ -58,66 +61,41 @@ public class Driver {
             majorEarnings += Integer.parseInt(row.getString(3));
         });
         avgMajorEarnings = majorEarnings/majors.count();
-
-        ArrayList<Column> cols = new ArrayList<>();
-        cols.add(col("INSTNM").isNotNull());
-        cols.add(col("STABBR").isNotNull());
-        cols.add(col("TUITIONFEE_IN").isNotNull());
-        cols.add(col("TUITIONFEE_OUT").isNotNull());
-        cols.add(col("DEP_DEBT_MDN").isNotNull());
-        cols.add(col("IND_DEBT_MDN").isNotNull());
-        cols.add(col("COMPL_RPY_7YR_RT").isNotNull());
-
+        
+        major = "";
+        
         switch(degree){
-            case 1: cols.add(col("PCIP01").isNotNull());
-                schemaString += "PCIP01"; break;
-            case 2: cols.add(col("PCIP04").isNotNull());
-                schemaString += "PCIP04"; break;
-            case 3: cols.add(col("PCIP09").isNotNull());
-                schemaString += "PCIP09"; break;
-            case 4: cols.add(col("PCIP13").isNotNull());
-                schemaString += "PCIP13"; break;
-            case 5: cols.add(col("PCIP14").isNotNull());
-                schemaString += "PCIP14"; break;
-            case 6: cols.add(col("PCIP23").isNotNull());
-                schemaString += "PCIP23"; break;
-            case 7: cols.add(col("PCIP26").isNotNull());
-                schemaString += "PCIP26"; break;
-            case 8: cols.add(col("PCIP27").isNotNull());
-                schemaString += "PCIP27"; break;
-            case 9: cols.add(col("PCIP51").isNotNull());
-                schemaString += "PCIP51"; break;
-            case 10: cols.add(col("PCIP38").isNotNull());
-                schemaString += "PCIP38"; break;
-            case 11: cols.add(col("PCIP41").isNotNull());
-                schemaString += "PCIP41"; break;
-            case 12: cols.add(col("PCIP42").isNotNull());
-                schemaString += "PCIP42"; break;
-            case 13: cols.add(col("PCIP46").isNotNull());
-                schemaString += "PCIP46"; break;
-            case 14: cols.add(col("PCIP50").isNotNull());
-                schemaString += "PCIP50"; break;
-            case 15: cols.add(col("PCIP52").isNotNull());
-                schemaString += "PCIP52"; break;
-            case 16: cols.add(col("PCIP22").isNotNull());
-                schemaString += "PCIP22"; break;
-            case 17: cols.add(col("PCIP11").isNotNull());
-                schemaString += "PCIP11"; break;
+            case 1: major = "PCIP01"; break;
+            case 2: major = "PCIP04"; break;
+            case 3: major = "PCIP09"; break;
+            case 4: major = "PCIP13"; break;
+            case 5: major = "PCIP14"; break;
+            case 6: major = "PCIP23"; break;
+            case 7: major = "PCIP26"; break;
+            case 8: major = "PCIP27"; break;
+            case 9: major = "PCIP51"; break;
+            case 10: major = "PCIP38"; break;
+            case 11: major = "PCIP41"; break;
+            case 12: major = "PCIP42"; break;
+            case 13: major = "PCIP46"; break;
+            case 14: major = "PCIP50"; break;
+            case 15: major = "PCIP52"; break;
+            case 16: major = "PCIP22"; break;
+            case 17: major = "PCIP11"; break;
         }
+        
+        JavaRDD<String> colleges = db.toJavaRDD().map(row -> {
+        	String result = row.getString(3) +", "+ row.getString(5)+", "+row.getString(378)+", "+row.getString(379)+", "+row.getString(1509)
+        	+row.getString(1510)+", "+row.getString(1394)+", "+row.getString(61)+", "+row.getString(63) +", "+ row.getString(65)
+        	+", "+row.getString(69)+", "+row.getString(70)+", "+row.getString(75)+", "+row.getString(78)+", "+row.getString(79)
+        	+", "+row.getString(96)+", "+row.getString(83)+", "+row.getString(86)+", "+row.getString(87)+", "+row.getString(91)
+        	+", "+row.getString(95)+", "+row.getString(97)+", "+row.getString(74)+", "+row.getString(67);
+        	return result;
+        });
+        colleges.saveAsTextFile("/Users/cblack/Desktop/cs455Project/cleaned");
 
-        List<StructField> fields = new ArrayList<>();
-        for (String fieldName : schemaString.split(" ")) {
-            fields.add(DataTypes.createStructField(fieldName, DataTypes.StringType, false));
-        }
-        StructType schema = DataTypes.createStructType(fields);
-
-//        Dataset<Row> db = sparkSession.read().format("csv").option("header", "true").option("inferSchema", "true").load(args[0]);
-        Dataset<Row> db = sparkSession.read().csv();
-        db.printSchema();
-
-        Dataset<Row> column = db.select(convertListToSeq(cols));
+        /*Dataset<Row> column = db.select(convertListToSeq(cols));
         JavaRDD<Row> columns = column.javaRDD();
-        columns.saveAsTextFile("/columns");
 
         JavaPairRDD<String, Double> scores = columns.mapToPair((row) -> {
             double debt;
@@ -140,8 +118,10 @@ public class Driver {
 
             double rate = 0;
             double val = 0;
+            System.out.println("Double at index 7: "+Double.parseDouble(row.getString(7)));
             try {
                 val = Double.parseDouble(row.getString(7));
+               
                 rate = Double.parseDouble(row.getString(6));
             } catch (Exception e) {
                 val = 0;
@@ -149,7 +129,7 @@ public class Driver {
             return new Tuple2<>(row.getString(0), (1 - rate) * (1 - val) * years);
         });
 
-        scores.saveAsTextFile("/scores");
+        scores.saveAsTextFile("/Users/cblack/Desktop/cs455Project/scores");
 
         scores.foreach((college) -> {
             if (college != null) {
@@ -161,7 +141,7 @@ public class Driver {
 
         JavaConverters.mapAsScalaMapConverter(topScores).asScala().toMap(Predef.conforms());
 
-        sc.parallelize(new ArrayList<>(topScores.values())).coalesce(1).saveAsTextFile("/answer");
+        sc.parallelize(new ArrayList<>(topScores.values())).coalesce(1).saveAsTextFile("/answer");*/
 
         sparkSession.stop();
         sc.stop();
