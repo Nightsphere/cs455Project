@@ -41,16 +41,15 @@ public class Driver {
         db.createOrReplaceTempView("majors");
         JavaRDD<Row> majors = db.filter(col("type").equalTo(degree)).javaRDD();
 
-        majors.foreach(row -> {
-            majorEarnings += Integer.parseInt(row.getString(3));
-        });
+        majors.foreach(row -> majorEarnings += Integer.parseInt(row.getString(3)));
+
         avgMajorEarnings = majorEarnings/majors.count();
 
         Dataset<Row> db2 = sparkSession.read().format("csv").option("header", true).load(args[0]);
 
         JavaPairRDD<Integer, String> colleges = db2.toJavaRDD().mapToPair((row -> {
-           return new Tuple2<>(Integer.parseInt(row.getString(0)), row.toString().substring(row.toString().indexOf(',') + 1 ,
-                   row.toString().length() - 1));
+           return new Tuple2<>(Integer.parseInt(row.getString(0)),
+                   row.toString().substring(row.toString().indexOf(',') + 1 , row.toString().length() - 1));
         }));
 
         JavaPairRDD<Integer, String> filter = colleges.mapToPair((college) -> {
